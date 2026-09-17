@@ -1,0 +1,29 @@
+[package]
+name = "kubectl-get"
+version = "0.1.0"
+description = "A rust rewrite of kubectl"
+edition = { workspace = true }
+rust-version = { workspace = true }
+homepage = { workspace = true }
+documentation = "not defined today"
+repository = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+kube = { workspace = true }
+kubectl-printers = { workspace = true }
+kubectl-config = { workspace = true }
+kubectl-groups = { workspace = true }
+clap = { workspace = true }
+k8s-openapi = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+colored_json = { workspace = true }
+colored = "3.1.1"
+tabprinter = { workspace = true }
+serde_json_path = { workspace = true }
+serde = { version = "1.0.229", features = ["derive"] }
+
+[dev-dependencies]
+k8s-openapi = { workspace = true }

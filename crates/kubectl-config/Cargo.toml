@@ -1,0 +1,21 @@
+[package]
+name = "kubectl-config"
+version = "0.1.0"
+description = "A rust rewrite of kubectl"
+edition = { workspace = true }
+rust-version = { workspace = true }
+homepage = { workspace = true }
+documentation = "not defined today"
+repository = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+kube = { workspace = true }
+clap = { workspace = true }
+serde_yaml = { workspace = true }
+k8s-openapi = { workspace = true }
+colored_json = { workspace = true }
+
+[dev-dependencies]
+k8s-openapi = { workspace = true }

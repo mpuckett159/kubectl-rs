@@ -1,0 +1,6 @@
+apiVersion: v1alpha1
+kind: Groups
+contextGroups:
+  dev:
+    - kind-kind
+    - kind-kind2

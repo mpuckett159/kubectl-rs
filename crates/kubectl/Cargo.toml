@@ -1,0 +1,25 @@
+[package]
+name = "kubectl"
+version = "0.1.0"
+description = "A rust rewrite of kubectl"
+edition = { workspace = true }
+rust-version = { workspace = true }
+homepage = { workspace = true }
+documentation = "not defined today"
+repository = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+default-run = "kubectl"
+
+[dependencies]
+kubectl-config = { workspace = true }
+kubectl-get = { workspace = true }
+clap = { workspace = true }
+kube = { workspace = true }
+k8s-openapi = { workspace = true }
+tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread", "macros"] }
+colored_json = { workspace = true }
+serde_yaml.workspace = true
+
+[dev-dependencies]
+k8s-openapi = { workspace = true }
