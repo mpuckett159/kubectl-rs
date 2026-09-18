@@ -13,6 +13,7 @@ license = "please don't use this"
 [workspace.dependencies]
 clap = { version = "4.6.6", features = ["cargo", "derive", "string"] }
 kubectl = { version = "0.1.0", path = "crates/kubectl" }
+kubectl-apply = { version = "0.1.0", path = "crates/kubectl-apply" }
 kubectl-config = { version = "0.1.0", path = "crates/kubectl-config" }
 kubectl-get = { version = "0.1.0", path = "crates/kubectl-get" }
 kubectl-groups = { version = "0.1.0", path = "crates/kubectl-groups" }

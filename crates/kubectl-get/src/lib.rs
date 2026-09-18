@@ -8,13 +8,12 @@ use kubectl_printers::PrinterColumns;
 use clap::Parser;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ListMeta};
 use kube::{
-    api::Api,
+    api::{Api, ListParams, ObjectList, TypeMeta},
     Client,
     Config,
+    config::KubeConfigOptions,
     core::{ApiResource, DynamicObject, GroupVersionKind},
 };
-use kube::api::{ListParams, ObjectList, TypeMeta};
-use kube::config::{KubeConfigOptions};
 use tabprinter::{Table, TableStyle, Alignment, Cell};
 use serde_json_path::JsonPath;
 

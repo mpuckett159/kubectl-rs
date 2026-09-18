@@ -32,10 +32,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Get(kubectl_get::GetArgs),
-    Apply {
-        /// apply a resource
-        resource: String,
-    },
+    Apply(kubectl_apply::ApplyArgs),
     Delete {
         /// delete a resource
         resource: String,
@@ -84,9 +81,9 @@ pub async fn main() -> Result<(), ExitCode> {
         Commands::Get(get_args) => {
             kubectl_get::get_resource(&get_args, config).await
         }
-        Commands::Apply { resource } => {
-            println!("Applying resource: {resource}");
-            Ok(())
+        Commands::Apply(apply_args) => {
+            println!("Applying a resource");
+            kubectl_apply::apply_resource(apply_args, config).await
         }
         Commands::Delete { resource } => {
             println!("Deleting resource: {resource}");

@@ -1100,10 +1100,22 @@ dependencies = [
  "colored_json",
  "k8s-openapi",
  "kube",
+ "kubectl-apply",
  "kubectl-config",
  "kubectl-get",
  "serde_yaml",
  "tokio",
+]
+
+[[package]]
+name = "kubectl-apply"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "colored_json",
+ "k8s-openapi",
+ "kube",
+ "serde_yaml",
 ]
 
 [[package]]
