@@ -31,13 +31,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Get(kubectl_get::GetArgs),
-    Apply(kubectl_apply::ApplyArgs),
-    Delete {
-        /// delete a resource
-        resource: String,
-    },
     Config(kubectl_config::ConfigArgs),
+    Create(kubectl_create::CreateArgs),
+    Delete(kubectl_delete::DeleteArgs),
+    Get(kubectl_get::GetArgs),
+    Patch(kubectl_patch::PatchArgs),
 }
 
 pub async fn main() -> Result<(), ExitCode> {
@@ -83,15 +81,6 @@ pub async fn main() -> Result<(), ExitCode> {
         };
 
     match args.command {
-        Commands::Get(get_args) => kubectl_get::get_resource(&get_args, config).await,
-        Commands::Apply(apply_args) => {
-            println!("Applying a resource");
-            kubectl_apply::apply_resource(apply_args, config).await
-        }
-        Commands::Delete { resource } => {
-            println!("Deleting resource: {resource}");
-            Ok(())
-        }
         Commands::Config(config_args) => {
             let config_cmd = config_args
                 .command
@@ -102,6 +91,19 @@ pub async fn main() -> Result<(), ExitCode> {
                     kubectl_config::config_view(kubeconfig).await
                 }
             }
+        }
+        Commands::Create(create_args) => {
+            println!("Creating a resource");
+            kubectl_create::create_resource(create_args, config).await
+        }
+        Commands::Delete(delete_args) => {
+            println!("Deleting a resource");
+            kubectl_delete::delete_resource(delete_args, config).await
+        }
+        Commands::Get(get_args) => kubectl_get::get_resource(&get_args, config).await,
+        Commands::Patch(patch_args) => {
+            println!("Patching a resource");
+            kubectl_patch::patch_resource(patch_args, config).await
         }
     }
 }

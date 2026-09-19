@@ -1100,15 +1100,17 @@ dependencies = [
  "colored_json",
  "k8s-openapi",
  "kube",
- "kubectl-apply",
  "kubectl-config",
+ "kubectl-create",
+ "kubectl-delete",
  "kubectl-get",
+ "kubectl-patch",
  "serde_yaml",
  "tokio",
 ]
 
 [[package]]
-name = "kubectl-apply"
+name = "kubectl-config"
 version = "0.1.0"
 dependencies = [
  "clap",
@@ -1119,7 +1121,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "kubectl-config"
+name = "kubectl-create"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "colored_json",
+ "k8s-openapi",
+ "kube",
+ "serde_yaml",
+]
+
+[[package]]
+name = "kubectl-delete"
 version = "0.1.0"
 dependencies = [
  "clap",
@@ -1164,6 +1177,17 @@ dependencies = [
  "serde_json_path",
  "serde_yaml",
  "tabprinter",
+]
+
+[[package]]
+name = "kubectl-patch"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "colored_json",
+ "k8s-openapi",
+ "kube",
+ "serde_yaml",
 ]
 
 [[package]]

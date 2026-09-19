@@ -1,5 +1,5 @@
 [package]
-name = "kubectl-apply"
+name = "kubectl-delete"
 version = "0.1.0"
 description = "A rust rewrite of kubectl"
 edition = { workspace = true }
