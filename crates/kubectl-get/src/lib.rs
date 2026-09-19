@@ -1,21 +1,20 @@
 use std::collections::BTreeMap;
+use std::io::{Write, stdout};
 use std::process::ExitCode;
-use std::io::{stdout, Write};
 
 use kubectl_groups::Groups;
 use kubectl_printers::PrinterColumns;
 
 use clap::Parser;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ListMeta};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::ListMeta;
 use kube::{
+    Client, Config,
     api::{Api, ListParams, ObjectList, TypeMeta},
-    Client,
-    Config,
     config::KubeConfigOptions,
     core::{ApiResource, DynamicObject, GroupVersionKind},
 };
-use tabprinter::{Table, TableStyle, Alignment, Cell};
 use serde_json_path::JsonPath;
+use tabprinter::{Alignment, Cell, Table, TableStyle};
 
 #[derive(Debug)]
 pub enum GetError {
@@ -39,27 +38,32 @@ pub struct GetArgs {
     cluster_group: Option<String>,
 }
 
-async fn get_one_resource(client: Client, get_args: &GetArgs, resource_type: &ApiResource) -> Result<DynamicObject, GetError> {
+async fn get_one_resource(
+    client: Client,
+    get_args: &GetArgs,
+    resource_type: &ApiResource,
+) -> Result<DynamicObject, GetError> {
     let namespace = get_args.namespace.as_str();
     let api: Api<DynamicObject> = Api::namespaced_with(client, &namespace, resource_type);
-    match api.get(get_args.resource_name.clone().unwrap().as_str()).await {
-        Ok(o) => {
-            Ok(o)
-        },
-        Err(e) => {
-            Err(GetError::ContextGroupMissing(e.to_string()))
-        }
+    match api
+        .get(get_args.resource_name.clone().unwrap().as_str())
+        .await
+    {
+        Ok(o) => Ok(o),
+        Err(e) => Err(GetError::ContextGroupMissing(e.to_string())),
     }
 }
 
-async fn get_multiple_resources(client: Client, get_args: &GetArgs, resource_type: &ApiResource) -> Result<ObjectList<DynamicObject>, GetError> {
+async fn get_multiple_resources(
+    client: Client,
+    get_args: &GetArgs,
+    resource_type: &ApiResource,
+) -> Result<ObjectList<DynamicObject>, GetError> {
     let namespace = get_args.clone().namespace;
     let api: Api<DynamicObject> = Api::namespaced_with(client, &namespace, resource_type);
     match api.list(&ListParams::default()).await {
         Ok(o) => Ok(o),
-        Err(e) => {
-            Err(GetError::ContextGroupMissing(e.to_string()))
-        }
+        Err(e) => Err(GetError::ContextGroupMissing(e.to_string())),
     }
 }
 
@@ -72,29 +76,38 @@ fn print_json(tree: MultiClusterMap) -> Result<(), ExitCode> {
             Ok(_) => (),
             Err(_) => {}
         }
-        match out.flush(){
+        match out.flush() {
             Ok(_) => (),
-            _ => return Err(ExitCode::FAILURE)
+            _ => return Err(ExitCode::FAILURE),
         }
     }
     Ok(())
 }
 
-async fn config_map_generator(context_group_name: String) -> Result<BTreeMap<String, Config>, GetError> {
+async fn config_map_generator(
+    context_group_name: String,
+) -> Result<BTreeMap<String, Config>, GetError> {
     let mut config_map: BTreeMap<String, Config> = BTreeMap::new();
     let context_groups: Groups = match Groups::load() {
         Ok(context_groups) => context_groups,
-        Err(e) => {
-            return Err(GetError::ContextGroupMissing(e.to_string()))
-        }
+        Err(e) => return Err(GetError::ContextGroupMissing(e.to_string())),
     };
-    let contexts: Vec<String> = context_groups.context_groups.get(&context_group_name).unwrap().clone();
+    let contexts: Vec<String> = context_groups
+        .context_groups
+        .get(&context_group_name)
+        .unwrap()
+        .clone();
     for context in contexts {
-        config_map.insert(context.clone(), Config::from_kubeconfig(&KubeConfigOptions {
-            context: Option::from(context),
-            cluster: None,
-            user: None,
-        }).await.unwrap());
+        config_map.insert(
+            context.clone(),
+            Config::from_kubeconfig(&KubeConfigOptions {
+                context: Option::from(context),
+                cluster: None,
+                user: None,
+            })
+            .await
+            .unwrap(),
+        );
     }
     Ok(config_map)
 }
@@ -119,34 +132,52 @@ pub async fn get_resource(get_args: &GetArgs, config: Config) -> Result<(), Exit
     let mut tree = MultiClusterMap::new();
     match get_args.cluster_group.clone() {
         Some(cluster_group) => {
-            tree.configs.append(&mut config_map_generator(cluster_group).await.unwrap());
+            tree.configs
+                .append(&mut config_map_generator(cluster_group).await.unwrap());
         }
         None => {
             tree.configs.insert("default".to_string(), config);
         }
     };
     for key in tree.configs.keys() {
-        tree.clients.insert(key.clone(), Client::try_from(tree.configs.get(key).cloned().unwrap()).unwrap());
+        tree.clients.insert(
+            key.clone(),
+            Client::try_from(tree.configs.get(key).cloned().unwrap()).unwrap(),
+        );
     }
     let gvk_vec: Vec<&str> = get_args.resource_type.split('/').collect();
-    let resource_type = &ApiResource::from_gvk(
-        &GroupVersionKind::gvk(gvk_vec[0], gvk_vec[1], gvk_vec[2]),
-    );
+    let resource_type =
+        &ApiResource::from_gvk(&GroupVersionKind::gvk(gvk_vec[0], gvk_vec[1], gvk_vec[2]));
     for key in tree.clients.keys() {
         match get_args.resource_name.clone() {
             Some(_) => {
-                let resource = get_one_resource(tree.clients.get(key).cloned().unwrap(), get_args, resource_type).await.unwrap();
-                tree.resources.insert(key.clone(), ObjectList {
-                    types: TypeMeta {
-                        api_version: "v1".to_string(),
-                        kind: "PodList".to_string(),
+                let resource = get_one_resource(
+                    tree.clients.get(key).cloned().unwrap(),
+                    get_args,
+                    resource_type,
+                )
+                .await
+                .unwrap();
+                tree.resources.insert(
+                    key.clone(),
+                    ObjectList {
+                        types: TypeMeta {
+                            api_version: "v1".to_string(),
+                            kind: "PodList".to_string(),
+                        },
+                        metadata: ListMeta::default(),
+                        items: vec![resource],
                     },
-                    metadata: ListMeta::default(),
-                    items: vec![resource],
-                });
+                );
             }
             _ => {
-                let resources = get_multiple_resources(tree.clients.get(key).cloned().unwrap(), get_args, resource_type).await.unwrap();
+                let resources = get_multiple_resources(
+                    tree.clients.get(key).cloned().unwrap(),
+                    get_args,
+                    resource_type,
+                )
+                .await
+                .unwrap();
                 tree.resources.insert(key.clone(), resources);
             }
         }
@@ -159,11 +190,12 @@ pub async fn get_resource(get_args: &GetArgs, config: Config) -> Result<(), Exit
                 println!("{}", value);
             }
         }
-        "tab" | "wide" => {
-            tab_list_printer(tree, get_args)?
-        }
+        "tab" | "wide" => tab_list_printer(tree, get_args)?,
         &_ => {
-            println!("Output format not supported, please use one of 'json', 'yaml', 'tab'. Provided {}", get_args.output);
+            println!(
+                "Output format not supported, please use one of 'json', 'yaml', 'tab'. Provided {}",
+                get_args.output
+            );
         }
     }
 

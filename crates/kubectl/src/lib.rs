@@ -5,7 +5,7 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 use kube::{
     Config,
-    config::{Kubeconfig, KubeConfigOptions},
+    config::{KubeConfigOptions, Kubeconfig},
 };
 
 fn get_default_kubeconfig_path() -> PathBuf {
@@ -37,7 +37,7 @@ enum Commands {
         /// delete a resource
         resource: String,
     },
-    Config(kubectl_config::ConfigArgs)
+    Config(kubectl_config::ConfigArgs),
 }
 
 pub async fn main() -> Result<(), ExitCode> {
@@ -46,41 +46,44 @@ pub async fn main() -> Result<(), ExitCode> {
     // Figure out the kubeconfig either from string else from defaults outlined
     // here https://docs.rs/kube/latest/kube/config/struct.Kubeconfig.html
     let kubeconfig = match &args.kubeconfig {
-        Some(in_kubeconfig) => {
-            match Kubeconfig::read_from(Path::new(in_kubeconfig)) {
-                Ok(kubeconfig) => kubeconfig,
-                Err(read_err) => {
-                    println!("Error reading kubeconfig: {}", read_err);
-                    return Err(ExitCode::FAILURE)
-                }
+        Some(in_kubeconfig) => match Kubeconfig::read_from(Path::new(in_kubeconfig)) {
+            Ok(kubeconfig) => kubeconfig,
+            Err(read_err) => {
+                println!("Error reading kubeconfig: {}", read_err);
+                return Err(ExitCode::FAILURE);
             }
-        }
-        _ => {
-            match Kubeconfig::read() {
-                Ok(config) => {
-                    println!("loaded default config");
-                    config
-                },
-                Err(infer_config_error) => {
-                    println!("error loading kubeconfig from default sources: {}", infer_config_error);
-                    return Err(ExitCode::FAILURE);
-                }
+        },
+        _ => match Kubeconfig::read() {
+            Ok(config) => {
+                println!("loaded default config");
+                config
             }
-        }
+            Err(infer_config_error) => {
+                println!(
+                    "error loading kubeconfig from default sources: {}",
+                    infer_config_error
+                );
+                return Err(ExitCode::FAILURE);
+            }
+        },
     };
 
-    let config = match Config::from_custom_kubeconfig(kubeconfig.clone(), &KubeConfigOptions::default()).await {
-        Ok(config) => config,
-        Err(infer_config_error) => {
-            println!("error parsing kubeconfig into client Config: {}", infer_config_error);
-            return Err(ExitCode::FAILURE);
-        }
-    };
+    let config =
+        match Config::from_custom_kubeconfig(kubeconfig.clone(), &KubeConfigOptions::default())
+            .await
+        {
+            Ok(config) => config,
+            Err(infer_config_error) => {
+                println!(
+                    "error parsing kubeconfig into client Config: {}",
+                    infer_config_error
+                );
+                return Err(ExitCode::FAILURE);
+            }
+        };
 
     match args.command {
-        Commands::Get(get_args) => {
-            kubectl_get::get_resource(&get_args, config).await
-        }
+        Commands::Get(get_args) => kubectl_get::get_resource(&get_args, config).await,
         Commands::Apply(apply_args) => {
             println!("Applying a resource");
             kubectl_apply::apply_resource(apply_args, config).await
@@ -90,7 +93,10 @@ pub async fn main() -> Result<(), ExitCode> {
             Ok(())
         }
         Commands::Config(config_args) => {
-            let config_cmd = config_args.command.clone().unwrap_or(kubectl_config::ConfigCommands::View);
+            let config_cmd = config_args
+                .command
+                .clone()
+                .unwrap_or(kubectl_config::ConfigCommands::View);
             match config_cmd {
                 kubectl_config::ConfigCommands::View => {
                     kubectl_config::config_view(kubeconfig).await

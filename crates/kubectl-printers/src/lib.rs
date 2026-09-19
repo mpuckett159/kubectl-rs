@@ -12,7 +12,9 @@ pub struct PrinterColumn {
 }
 
 impl PrinterColumns {
-    pub fn new() -> Self { PrinterColumns { columns: vec![] } }
+    pub fn new() -> Self {
+        PrinterColumns { columns: vec![] }
+    }
     pub fn pods() -> PrinterColumns {
         PrinterColumns {
             columns: vec![
@@ -60,7 +62,9 @@ impl PrinterColumns {
                     name: String::from("Age"),
                     data_type: String::from("String"),
                     json_path: String::from("$.metadata.creationTimestamp"),
-                    description: String::from("Human readable duration since start time of the Pod"),
+                    description: String::from(
+                        "Human readable duration since start time of the Pod",
+                    ),
                     format: String::from("String"),
                     priority: 0,
                 },
@@ -84,7 +88,9 @@ impl PrinterColumns {
                     name: String::from("Nominated Node"),
                     data_type: String::from("String"),
                     json_path: String::from("$.status.nominatedNodeName"),
-                    description: String::from("Name of Node that is nominated for the Pod to run on"),
+                    description: String::from(
+                        "Name of Node that is nominated for the Pod to run on",
+                    ),
                     format: String::from("String"),
                     priority: 1,
                 },
@@ -147,7 +153,9 @@ impl PrinterColumns {
                     name: String::from("Age"),
                     data_type: String::from("String"),
                     json_path: String::from("$.metadata.creationTimestamp"),
-                    description: String::from("Human readable duration since creation time of the Deployment"),
+                    description: String::from(
+                        "Human readable duration since creation time of the Deployment",
+                    ),
                     format: String::from("String"),
                     priority: 0,
                 },
@@ -171,10 +179,12 @@ impl PrinterColumns {
                     name: String::from("Selector"),
                     data_type: String::from("String"),
                     json_path: String::from("$.spec.selector.matchLabels[*]"),
-                    description: String::from("Selectors that the Deployment uses to determine which Pods belong to the Deployment"),
+                    description: String::from(
+                        "Selectors that the Deployment uses to determine which Pods belong to the Deployment",
+                    ),
                     format: String::from("String"),
                     priority: 1,
-                }
+                },
             ],
         }
     }

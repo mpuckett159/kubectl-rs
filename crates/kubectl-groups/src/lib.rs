@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::File;
-use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

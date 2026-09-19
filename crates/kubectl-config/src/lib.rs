@@ -15,7 +15,11 @@ pub struct ConfigArgs {
 impl ConfigArgs {
     pub fn new(command: Option<ConfigCommands>) -> ConfigArgs {
         ConfigArgs {
-            command: if command.is_some() { Option::from(command) } else { Option::from(ConfigCommands::View) },
+            command: if command.is_some() {
+                Option::from(command)
+            } else {
+                Option::from(ConfigCommands::View)
+            },
         }
     }
 }
