@@ -1197,6 +1197,7 @@ dependencies = [
  "serde_json",
  "serde_json_path",
  "serde_yaml",
+ "shellexpand",
  "tabprinter",
 ]
 

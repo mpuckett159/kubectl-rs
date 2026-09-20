@@ -18,8 +18,7 @@ impl Groups {
             context_groups: BTreeMap::new(),
         }
     }
-    pub fn load() -> Result<Self, serde_yaml::Error> {
-        let file = File::open("/Users/msalazar/.kube/groups.yaml").unwrap();
-        serde_yaml::from_reader(file)
+    pub fn load(path: String) -> Result<Self, serde_yaml::Error> {
+        serde_yaml::from_reader(File::open(shellexpand::tilde(&path).into_owned()).unwrap())
     }
 }

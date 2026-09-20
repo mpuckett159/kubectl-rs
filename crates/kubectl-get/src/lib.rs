@@ -27,11 +27,6 @@ pub enum GetError {
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about)]
 pub struct GetArgs {
-    resource_group: Option<String>,
-    resource_version: String,
-    resource_kind: String,
-    resource_name: Option<String>,
-
     #[arg(
         short,
         long,
@@ -48,19 +43,31 @@ pub struct GetArgs {
     )]
     namespace: String,
 
-    #[arg(short, long, help = "File path to the cluster group config file")]
-    cluster_group: Option<String>,
+    #[arg(long, help = "Name of context group to use")]
+    context_group: Option<String>,
+
+    #[arg(
+        long,
+        default_value = "~/.kube/groups.yaml",
+        help = "Name of context group to use"
+    )]
+    context_file: String,
 
     // If present: true, if absent: false.
     #[arg(short, long, help = "Pass flag to print managed fields in output")]
     managed_fields: bool,
+
+    resource_group: String,
+    resource_version: String,
+    resource_kind: String,
+    resource_name: Option<String>,
 }
 
 async fn get_one_resource(client: Client, get_args: &GetArgs) -> Result<DynamicObject, GetError> {
     let namespace = get_args.namespace.as_str();
     let api_version = format!(
         "{}/{}",
-        get_args.resource_group.clone().unwrap(),
+        get_args.resource_group.clone(),
         get_args.resource_version
     );
     let kind = get_args.resource_kind.as_str();
@@ -93,7 +100,7 @@ async fn get_multiple_resources(
 ) -> Result<ObjectList<DynamicObject>, GetError> {
     let namespace = get_args.namespace.as_str();
     let gvk = GroupVersionKind {
-        group: get_args.resource_group.clone().unwrap(),
+        group: get_args.resource_group.clone(),
         version: get_args.clone().resource_version,
         kind: get_args.clone().resource_kind,
     };
@@ -135,9 +142,10 @@ fn print_json(tree: MultiClusterMap) -> Result<(), ExitCode> {
 
 async fn config_map_generator(
     context_group_name: String,
+    context_group_file: String,
 ) -> Result<BTreeMap<String, Config>, GetError> {
     let mut config_map: BTreeMap<String, Config> = BTreeMap::new();
-    let context_groups: Groups = match Groups::load() {
+    let context_groups: Groups = match Groups::load(context_group_file) {
         Ok(context_groups) => context_groups,
         Err(e) => return Err(GetError::ContextGroupMissing(e.to_string())),
     };
@@ -179,10 +187,13 @@ impl MultiClusterMap {
 
 pub async fn get_resource(get_args: &GetArgs, config: Config) -> Result<(), ExitCode> {
     let mut tree = MultiClusterMap::new();
-    match get_args.cluster_group.clone() {
-        Some(cluster_group) => {
-            tree.configs
-                .append(&mut config_map_generator(cluster_group).await.unwrap());
+    match get_args.context_group.clone() {
+        Some(context_group) => {
+            tree.configs.append(
+                &mut config_map_generator(context_group, get_args.context_file.clone())
+                    .await
+                    .unwrap(),
+            );
         }
         None => {
             tree.configs.insert("default".to_string(), config);
