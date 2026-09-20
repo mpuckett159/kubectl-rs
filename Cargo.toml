@@ -27,6 +27,7 @@ serde_json = "1.0.151"
 tabprinter = "0.2.2"
 colored_json = "5.0.0"
 serde_json_path = "0.7.2"
+shellexpand = "3.1.2"
 
 [workspace.dev-dependencies]
 k8s-openapi = { version = "0.28.0", features = ["v1_32"] }

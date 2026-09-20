@@ -23,6 +23,7 @@ k8s-openapi = { workspace = true }
 tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread", "macros"] }
 colored_json = { workspace = true }
 serde_yaml.workspace = true
+shellexpand = { workspace = true }
 
 [dev-dependencies]
 k8s-openapi = { workspace = true }

@@ -7,11 +7,13 @@ use kubectl_printers::PrinterColumns;
 
 use clap::Parser;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ListMeta;
+use kube::api::{ApiResource, GroupVersionKind};
 use kube::{
     Client, Config, ResourceExt,
     api::{Api, ListParams, ObjectList, TypeMeta},
     config::KubeConfigOptions,
-    core::{ApiResource, DynamicObject, GroupVersionKind},
+    core::DynamicObject,
+    discovery,
 };
 use serde_json_path::JsonPath;
 use tabprinter::{Alignment, Cell, Table, TableStyle};
@@ -25,16 +27,28 @@ pub enum GetError {
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about)]
 pub struct GetArgs {
-    resource_type: String,
+    resource_group: Option<String>,
+    resource_version: String,
+    resource_kind: String,
     resource_name: Option<String>,
 
-    #[arg(short, long, default_value = "tab")]
+    #[arg(
+        short,
+        long,
+        default_value = "tab",
+        help = "output format to print; tab, json, yaml"
+    )]
     output: String,
 
-    #[arg(short, long, default_value = "column")]
+    #[arg(
+        short,
+        long,
+        default_value = "default",
+        help = "namespace to look for resource in"
+    )]
     namespace: String,
 
-    #[arg(short, long)]
+    #[arg(short, long, help = "File path to the cluster group config file")]
     cluster_group: Option<String>,
 
     // If present: true, if absent: false.
@@ -42,13 +56,22 @@ pub struct GetArgs {
     managed_fields: bool,
 }
 
-async fn get_one_resource(
-    client: Client,
-    get_args: &GetArgs,
-    resource_type: &ApiResource,
-) -> Result<DynamicObject, GetError> {
+async fn get_one_resource(client: Client, get_args: &GetArgs) -> Result<DynamicObject, GetError> {
     let namespace = get_args.namespace.as_str();
-    let api: Api<DynamicObject> = Api::namespaced_with(client, &namespace, resource_type);
+    let api_version = format!(
+        "{}/{}",
+        get_args.resource_group.clone().unwrap(),
+        get_args.resource_version
+    );
+    let kind = get_args.resource_kind.as_str();
+    let gv = api_version.parse().unwrap();
+    println!("gv: {:?}", gv);
+    let apigroup = discovery::pinned_group(&client, &gv).await.unwrap();
+    let (ar, _) = apigroup.recommended_kind(kind).unwrap();
+    let api: Api<DynamicObject> = match namespace {
+        "" => Api::all_with(client.clone(), &ar),
+        _ => Api::namespaced_with(client.clone(), &namespace, &ar),
+    };
     match api
         .get(get_args.resource_name.clone().unwrap().as_str())
         .await
@@ -60,17 +83,25 @@ async fn get_one_resource(
             }
             Ok(o)
         }
-        Err(e) => Err(GetError::ContextGroupMissing(e.to_string())),
+        Err(e) => Err(GetError::GetResourcesMissing(e.to_string())),
     }
 }
 
 async fn get_multiple_resources(
     client: Client,
     get_args: &GetArgs,
-    resource_type: &ApiResource,
 ) -> Result<ObjectList<DynamicObject>, GetError> {
-    let namespace = get_args.clone().namespace;
-    let api: Api<DynamicObject> = Api::namespaced_with(client, &namespace, resource_type);
+    let namespace = get_args.namespace.as_str();
+    let gvk = GroupVersionKind {
+        group: get_args.resource_group.clone().unwrap(),
+        version: get_args.clone().resource_version,
+        kind: get_args.clone().resource_kind,
+    };
+    let api_resource = ApiResource::from_gvk(&gvk);
+    let api: Api<DynamicObject> = match namespace {
+        "" => Api::all_with(client.clone(), &api_resource),
+        _ => Api::namespaced_with(client.clone(), &namespace, &api_resource),
+    };
     match api.list(&ListParams::default()).await {
         Ok(mut o) => {
             // remove managed fields from object
@@ -81,7 +112,7 @@ async fn get_multiple_resources(
             }
             Ok(o)
         }
-        Err(e) => Err(GetError::ContextGroupMissing(e.to_string())),
+        Err(e) => Err(GetError::GetResourcesMissing(e.to_string())),
     }
 }
 
@@ -163,19 +194,12 @@ pub async fn get_resource(get_args: &GetArgs, config: Config) -> Result<(), Exit
             Client::try_from(tree.configs.get(key).cloned().unwrap()).unwrap(),
         );
     }
-    let gvk_vec: Vec<&str> = get_args.resource_type.split('/').collect();
-    let resource_type =
-        &ApiResource::from_gvk(&GroupVersionKind::gvk(gvk_vec[0], gvk_vec[1], gvk_vec[2]));
     for key in tree.clients.keys() {
         match get_args.resource_name.clone() {
             Some(_) => {
-                let resource = get_one_resource(
-                    tree.clients.get(key).cloned().unwrap(),
-                    get_args,
-                    resource_type,
-                )
-                .await
-                .unwrap();
+                let resource = get_one_resource(tree.clients.get(key).cloned().unwrap(), get_args)
+                    .await
+                    .unwrap();
                 tree.resources.insert(
                     key.clone(),
                     ObjectList {
@@ -189,13 +213,10 @@ pub async fn get_resource(get_args: &GetArgs, config: Config) -> Result<(), Exit
                 );
             }
             _ => {
-                let resources = get_multiple_resources(
-                    tree.clients.get(key).cloned().unwrap(),
-                    get_args,
-                    resource_type,
-                )
-                .await
-                .unwrap();
+                let resources =
+                    get_multiple_resources(tree.clients.get(key).cloned().unwrap(), get_args)
+                        .await
+                        .unwrap();
                 tree.resources.insert(key.clone(), resources);
             }
         }
