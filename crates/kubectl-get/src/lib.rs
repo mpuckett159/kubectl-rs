@@ -8,7 +8,7 @@ use kubectl_printers::PrinterColumns;
 use clap::Parser;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ListMeta;
 use kube::{
-    Client, Config,
+    Client, Config, ResourceExt,
     api::{Api, ListParams, ObjectList, TypeMeta},
     config::KubeConfigOptions,
     core::{ApiResource, DynamicObject, GroupVersionKind},
@@ -36,6 +36,10 @@ pub struct GetArgs {
 
     #[arg(short, long)]
     cluster_group: Option<String>,
+
+    // If present: true, if absent: false.
+    #[arg(short, long, help = "Pass flag to print managed fields in output")]
+    managed_fields: bool,
 }
 
 async fn get_one_resource(
@@ -49,7 +53,13 @@ async fn get_one_resource(
         .get(get_args.resource_name.clone().unwrap().as_str())
         .await
     {
-        Ok(o) => Ok(o),
+        Ok(mut o) => {
+            // remove managed fields from object
+            if !get_args.managed_fields {
+                o.managed_fields_mut().clear();
+            }
+            Ok(o)
+        }
         Err(e) => Err(GetError::ContextGroupMissing(e.to_string())),
     }
 }
@@ -62,7 +72,15 @@ async fn get_multiple_resources(
     let namespace = get_args.clone().namespace;
     let api: Api<DynamicObject> = Api::namespaced_with(client, &namespace, resource_type);
     match api.list(&ListParams::default()).await {
-        Ok(o) => Ok(o),
+        Ok(mut o) => {
+            // remove managed fields from object
+            if !get_args.managed_fields {
+                o.items
+                    .iter_mut()
+                    .for_each(|item| item.managed_fields_mut().clear());
+            }
+            Ok(o)
+        }
         Err(e) => Err(GetError::ContextGroupMissing(e.to_string())),
     }
 }
